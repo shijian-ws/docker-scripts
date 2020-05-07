@@ -1,0 +1,44 @@
+#!/bin/sh
+
+set -eu
+
+# 2, 服务端配置
+
+## 定义环境变量
+OVPN_PROTO=udp
+OVPN_CN=$HOST_IP
+OVPN_PORT=1194
+EASYRSA_PKI=/etc/openvpn/pki
+OVPN_CONFIG=/etc/openvpn/openvpn.conf
+
+# 生成tls认证秘钥
+openvpn --genkey --secret $EASYRSA_PKI/ta.key
+
+# 生成openvpn服务端配置文件
+cat > "$OVPN_CONFIG" << END
+proto $OVPN_PROTO
+port $OVPN_PORT
+dev tun0
+
+ca $EASYRSA_PKI/ca.crt
+key $EASYRSA_PKI/private/$OVPN_CN-server.key
+cert $EASYRSA_PKI/issued/$OVPN_CN-server.crt
+dh $EASYRSA_PKI/dh.pem
+
+server 10.8.0.0 255.255.255.0
+keepalive 10 120
+duplicate-cn
+comp-lzo no
+
+key-direction 0
+tls-auth $EASYRSA_PKI/ta.key
+
+status /tmp/openvpn-status.log
+verb 3
+
+persist-key
+persist-tun
+
+user nobody
+group nogroup
+END
