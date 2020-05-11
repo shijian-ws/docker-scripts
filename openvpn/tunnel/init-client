@@ -4,35 +4,52 @@ set -eu
 
 # 3, 客户端配置
 
+# 初始化环境变量
+source $OPENVPN/ovpn_env
+
 # 定义环境变量
-OVPN_PROTO=udp
-OVPN_CN=$HOST_IP
-OVPN_PORT=1194
-EASYRSA_PKI=/etc/openvpn/pki
-OVPN_CONFIG=/etc/openvpn/$OVPN_CN.ovpn
+OVPN_REMOTE=$REMOTE_IP
+OVPN_CLIENT_KEY=$OVPN_PKI/private/$OVPN_REMOTE-client.key
+OVPN_CLIENT_REQ=$OVPN_PKI/reqs/$OVPN_REMOTE-client.req
+OVPN_CLIENT_CRT=$OVPN_PKI/issued/$OVPN_REMOTE-client.crt
+OVPN_CLIENT_CONFIG=$OPENVPN/$OVPN_REMOTE.ovpn
+
+if [ -f $OVPN_CLIENT_CONFIG ]; then
+  echo "$OVPN_CLIENT_CONFIG配置文件已存在, 跳过初始化"
+  exit
+fi
+
+if [[ ! -f $OVPN_CLIENT_KEY || -f $OVPN_CLIENT_REQ ]]; then
+  # 缺少私钥或证书
+  rm -fr $OVPN_CLIENT_KEY $OVPN_CLIENT_REQ $OVPN_CLIENT_CRT
+fi
+
+# 生成客户端端证书
+cd ${OVPN_PKI%/*}
+easyrsa build-client-full $OVPN_REMOTE-client nopass
 
 # 生成openvpn客户端配置文件
-cat > "$OVPN_CONFIG" << END
+cat > "$OVPN_CLIENT_CONFIG" << END
 client
 nobind
 dev tun
-comp-lzo no
 
-remote $OVPN_CN $OVPN_PORT $OVPN_PROTO
+remote $OVPN_REMOTE $OVPN_PORT $OVPN_PROTO
 resolv-retry infinite
 remote-cert-tls server
 
 <key>
-$(cat $EASYRSA_PKI/private/${OVPN_CN}-client.key)
+$(cat $OVPN_CLIENT_KEY)
 </key>
 <cert>
-$(openssl x509 -in $EASYRSA_PKI/issued/${OVPN_CN}-client.crt)
+$(openssl x509 -in $OVPN_CLIENT_CRT)
 </cert>
 <ca>
-$(cat $EASYRSA_PKI/ca.crt)
+$(cat $OVPN_CA_CRT)
 </ca>
 key-direction 1
 <tls-auth>
-$(cat $EASYRSA_PKI/ta.key)
+$(cat $OVPN_TA_KEY)
 </tls-auth>
 END
+echo "$OVPN_CLIENT_CONFIG 客户端配置文件已生成"

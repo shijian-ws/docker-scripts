@@ -1,0 +1,37 @@
+#!/bin/sh
+
+if [ ! -d $OPENVPN ];then
+  mkdir -p $OPENVPN
+fi
+
+OVPN_CN=cn
+OVPN_PROTO=udp
+OVPN_PORT=1194
+if [ $SERVER_URL ]; then
+  # 解析参数
+  OVPN_CN=
+  OVPN_PROTO=
+  OVPN_PORT=
+fi
+
+OVPN_DEVICE=tun
+OVPN_DEVICEN=0
+OVPN_SERVER=10.8.0.0/24
+OVPN_DNS_SERVERS=223.5.5.5,223.6.6.6
+OVPN_KEEPALIVE="10 120"
+
+OVPN_PKI=$OPENVPN/pki
+OVPN_CA_CRT=$OVPN_PKI/ca.crt
+OVPN_SERVER_KEY=$OVPN_PKI/private/${OVPN_CN}-server.key
+OVPN_SERVER_CRT=$OVPN_PKI/issued/${OVPN_CN}-server.crt
+OVPN_SERVER_DH=$OVPN_PKI/dh.pem
+OVPN_TA_KEY=$OVPN_PKI/ta.key
+
+OVPN_SERVER_CONFIG=$OPENVPN/openvpn.conf
+
+OVPN_ENV=${OPENVPN:-}/ovpn_env
+
+echo 'alias easyrsa=/usr/share/easy-rsa/easyrsa' > $OVPN_ENV
+(set | grep '^OVPN_') | while read -r var; do
+  echo "export $var" >> $OVPN_ENV
+done
