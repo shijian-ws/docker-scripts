@@ -16,5 +16,4 @@ easyrsa init-pki
 echo ${OVPN_CN} | easyrsa build-ca nopass
 # 生成服务端证书
 easyrsa build-server-full ${OVPN_CN}-server nopass
-#easyrsa gen-dh
-openssl dhparam -out $OVPN_SERVER_DH 1024
+easyrsa gen-dh
